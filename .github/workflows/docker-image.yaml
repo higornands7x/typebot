@@ -1,0 +1,44 @@
+name: Build and Push Docker Image
+
+on:
+  push:
+    branches:
+      - main  # Dispara o workflow quando houver um push na branch "main"
+  pull_request:
+    branches:
+      - main  # Dispara também em pull requests na branch "main"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Faz o checkout do repositório
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Faz o login no Docker Hub
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      # Configura a versão da imagem com base no Git SHA ou outro identificador
+      - name: Extract short commit SHA
+        id: vars
+        run: echo "::set-output name=short_sha::$(git rev-parse --short $GITHUB_SHA)"
+
+      # Faz o build da imagem Docker
+      - name: Build Docker Image
+        run: docker build . -t ${{ secrets.DOCKER_USERNAME }}/typebot:${{ steps.vars.outputs.short_sha }}
+
+      # Faz o push da imagem para o Docker Hub
+      - name: Push Docker Image
+        run: docker push ${{ secrets.DOCKER_USERNAME }}/typebot:${{ steps.vars.outputs.short_sha }}
+
+      # (Opcional) Faz o push de uma imagem "latest"
+      - name: Push latest Docker Image
+        run: |
+          docker tag ${{ secrets.DOCKER_USERNAME }}/typebot:${{ steps.vars.outputs.short_sha }} ${{ secrets.DOCKER_USERNAME }}/typebot:latest
+          docker push ${{ secrets.DOCKER_USERNAME }}/typebot:latest
